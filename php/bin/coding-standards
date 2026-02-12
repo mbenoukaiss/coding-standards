@@ -1,0 +1,17 @@
+#!/usr/bin/env php
+<?php
+
+$projectRoot = getcwd();
+$vendorDir = $projectRoot . '/vendor';
+
+$executable = $vendorDir . '/bin/php-cs-fixer';
+$configPath = $vendorDir . '/snapfeat/coding-standards/resources/php-cs-fixer.php';
+$commandArgs = implode(' ', array_slice($_SERVER['argv'], 1));
+if(in_array("--check", $_SERVER['argv'])) {
+  $command = "check";
+} else {
+  $command = "fix --quiet";
+}
+
+passthru("$executable $command --config=$configPath", $exitCode);
+exit($exitCode);
