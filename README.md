@@ -22,6 +22,8 @@ Add scripts to your project:
 }
 ```
 
+test tag
+
 ## Development
 
 If you need to manipulate the `package.json` file, you can run the following command:
