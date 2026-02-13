@@ -1,0 +1,65 @@
+name: Split repository
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - 'php-v*'
+      - 'js-v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  split-packages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Parse tags
+        uses: actions/github-script@v8
+        id: parse-tags
+        with:
+          script: |
+            const ref = context.ref;
+            if (ref.startsWith('refs/tags/')) {
+              const tagName = context.payload.ref.replace('refs/tags/', '');
+              // php-v1.0.0 -> lang: php, version: v1.0.0
+              const [lang, ...versionParts] = tagName.split('-');
+              core.setOutput('lang', lang);
+              core.setOutput('version', versionParts.join('-'));
+              core.setOutput('mode', 'tag');
+            } else {
+              core.setOutput('mode', 'push');
+              core.setOutput('version', ''); // Empty tag for regular pushes
+            }
+
+      - name: Push PHP folder to pkg/php branch
+        if: steps.parse-tags.outputs.mode == 'push' || steps.parse-tags.outputs.lang == 'php'
+        uses: s0/git-publish-subdir-action@develop
+        env:
+          REPO: self
+          BRANCH: pkg/php
+          FOLDER: php
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SKIP_EMPTY_COMMITS: true
+          SQUASH_HISTORY: false
+          TAG: ${{ steps.meta.outputs.version }}
+
+      - name: Push JS folder to pkg/js branch
+        if: steps.parse-tags.outputs.mode == 'push' || steps.parse-tags.outputs.lang == 'js'
+        uses: s0/git-publish-subdir-action@develop
+        env:
+          REPO: self
+          BRANCH: pkg/js
+          FOLDER: js
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SKIP_EMPTY_COMMITS: true
+          TAG: ${{ steps.meta.outputs.version }}
